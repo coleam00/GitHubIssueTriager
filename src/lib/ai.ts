@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 
 const EMBED_DIMS = 1536;
 const EMBED_MODEL = "text-embedding-3-small";
-const CHAT_MODEL = "gpt-4o-mini";
+const CHAT_MODEL = "gpt-5.4-nano";
 
 function getOpenAI(): OpenAI | null {
   const key = process.env.OPENAI_API_KEY;
