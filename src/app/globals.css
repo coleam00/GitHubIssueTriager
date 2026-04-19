@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  background-color: #0b1020;
+  color: #e5ecff;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+a {
+  color: #7cc6fe;
+}
+
+a:hover {
+  color: #a8dcff;
+}
+
+.chip {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid #1e2749;
+  background: #121832;
+}
+
+.chip-P0 { background: #4a0e15; border-color: #7a1a24; color: #ffb3bd; }
+.chip-P1 { background: #4a2a0a; border-color: #7a4a1a; color: #ffd28c; }
+.chip-P2 { background: #0a2e4a; border-color: #1a507a; color: #a8d4ff; }
+.chip-P3 { background: #1a2a1f; border-color: #2a4a35; color: #a8d4b8; }
+
+.chip-bug { background: #3a0e15; color: #ff9ba6; border-color: #6a1a24; }
+.chip-feature { background: #0e2a3a; color: #8ed0ff; border-color: #1a4a6a; }
+.chip-question { background: #2a1a3a; color: #d1a8ff; border-color: #4a2a6a; }
+.chip-docs { background: #1a2a1a; color: #a8e0a8; border-color: #2a4a2a; }
+.chip-chore { background: #2a2a2a; color: #c8c8c8; border-color: #444; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid #3c6a99;
+  background: #1a2a4a;
+  color: #cfe4ff;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn:hover:not(:disabled) {
+  background: #243659;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #2a5aa0;
+  border-color: #4a8ad0;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #3568b5;
+}
+
+.panel {
+  background: #121832;
+  border: 1px solid #1e2749;
+  border-radius: 12px;
+  padding: 20px;
+}
