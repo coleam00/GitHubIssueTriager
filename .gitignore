@@ -11,3 +11,4 @@ build
 .vercel
 next-env.d.ts
 agent-browser-runs
+tsconfig.tsbuildinfo

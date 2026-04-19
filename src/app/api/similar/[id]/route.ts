@@ -10,8 +10,11 @@ type SimilarRow = { github_number: number; title: string; similarity: number };
 
 export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
+  if (!/^\d+$/.test(id)) {
+    return NextResponse.json({ ok: false, message: "bad id" }, { status: 400 });
+  }
   const issueId = parseInt(id, 10);
-  if (Number.isNaN(issueId)) {
+  if (!Number.isSafeInteger(issueId) || issueId < 1 || issueId > 2147483647) {
     return NextResponse.json({ ok: false, message: "bad id" }, { status: 400 });
   }
 

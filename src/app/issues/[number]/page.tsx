@@ -60,8 +60,9 @@ async function fetchAll(number: number) {
 
 export default async function IssueDetail({ params }: { params: Promise<{ number: string }> }) {
   const p = await params;
+  if (!/^\d+$/.test(p.number)) notFound();
   const number = parseInt(p.number, 10);
-  if (Number.isNaN(number)) notFound();
+  if (!Number.isSafeInteger(number) || number < 1 || number > 2147483647) notFound();
 
   const issue = ((await sql`
     SELECT id, github_repo, github_number, title, body, state, author, url, labels, github_created_at

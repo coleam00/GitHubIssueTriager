@@ -60,9 +60,9 @@ export default async function IssuesPage({
       </div>
 
       <div className="panel space-y-3" data-testid="filter-bar">
-        <FilterRow label="State" current={sp.state} options={states} param="state" />
-        <FilterRow label="Category" current={sp.category} options={categories} param="category" />
-        <FilterRow label="Priority" current={sp.priority} options={priorities} param="priority" />
+        <FilterRow label="State" current={sp.state} options={states} param="state" sp={sp} />
+        <FilterRow label="Category" current={sp.category} options={categories} param="category" sp={sp} />
+        <FilterRow label="Priority" current={sp.priority} options={priorities} param="priority" sp={sp} />
       </div>
 
       <div className="panel">
@@ -97,14 +97,19 @@ function FilterRow({
   options,
   current,
   param,
+  sp,
 }: {
   label: string;
   options: string[];
   current: string | undefined;
   param: string;
+  sp: { category?: string; priority?: string; state?: string };
 }) {
   const buildHref = (value: string | null) => {
     const params = new URLSearchParams();
+    for (const [k, v] of Object.entries(sp)) {
+      if (v && k !== param) params.set(k, v);
+    }
     if (value) params.set(param, value);
     const q = params.toString();
     return q ? `?${q}` : "/issues";
