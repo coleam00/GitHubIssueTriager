@@ -1,0 +1,8 @@
+assistants:
+  pi:
+    enableExtensions: true
+    interactive: true
+    extensionFlags:
+      plan: true
+    env:
+      PLANNOTATOR_REMOTE: "1"

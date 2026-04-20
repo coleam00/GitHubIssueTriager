@@ -1,0 +1,413 @@
+# Plannotator-gated PIV loop.
+#
+# Flow: Archon asks 2-3 clarifying questions via chat HITL → Pi session writes
+# PLAN.md and submits via @plannotator/pi-extension → human reviews and approves
+# (or denies with feedback, iterating inside the Pi session) over HTTP on
+# 127.0.0.1:19432 → Claude implements the approved plan task-by-task → final
+# validation + summary.
+#
+# The URL for the plannotator review UI is emitted into the chat stream when
+# the Pi agent calls `plannotator_submit_plan`. On the CLI it prints to stdout
+# (prefixed with `[pi extension ℹ️]`); in the web UI it appears in the chat
+# transcript.
+#
+# Prereqs (one-time per machine):
+#   pi install npm:@plannotator/pi-extension
+#
+# And in the repo's `.archon/config.yaml` (extensions + interactive default ON
+# for Pi, so only the plannotator-specific bits are needed):
+#   assistants:
+#     pi:
+#       extensionFlags:
+#         plan: true
+#       env:
+#         PLANNOTATOR_REMOTE: "1"   # binds plannotator on 127.0.0.1:19432
+#                                   # and routes the review URL via notify()
+#
+# Input: free-text description of what to build.
+
+name: archon-plannotator-piv
+description: |
+  Use when: You want a plan-gated feature build where the plan is reviewed via
+  plannotator's HTTP approval UI instead of chat back-and-forth.
+  Triggers: "plannotator piv", "plan with plannotator", "build with plannotator gate".
+  NOT for: Fully-chat-driven PIV (use archon-piv-loop), quick fixes, PR reviews.
+
+  Four phases:
+  1. CLARIFY: Claude asks 2-3 targeted questions via Archon HITL, converges on intent.
+  2. PLAN: Pi session writes PLAN.md and submits it to plannotator. The reviewer
+     receives a 127.0.0.1:19432 URL and approves (or denies with feedback — Pi
+     iterates on the plan inside its session until approved).
+  3. IMPLEMENT: Claude reads the approved PLAN.md and executes task-by-task
+     with per-task validation + commits.
+  4. VALIDATE: Final full validation + summary.
+
+provider: claude
+interactive: true
+
+nodes:
+  # ═══════════════════════════════════════════════════════════════
+  # PHASE 1: CLARIFY — 2-3 targeted questions through Archon HITL
+  # Converges on intent before handing off to plannotator.
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: clarify
+    loop:
+      prompt: |
+        # Plannotator-PIV — Clarify Phase
+
+        You are about to hand off to a Pi session that will write a plan and
+        submit it through plannotator's HTTP approval UI. Before that handoff,
+        get enough clarity that the Pi agent can produce a useful plan.
+
+        **User's request**: $ARGUMENTS
+        **User's latest reply**: $LOOP_USER_INPUT
+
+        ---
+
+        ## If this is the FIRST iteration (no reply yet):
+
+        1. **Read CLAUDE.md** (and any nearby conventions docs).
+        2. **Do light codebase recon** — grep/Read for the obvious touch points.
+           2-3 minutes, not a deep dive. Just enough to ask grounded questions.
+        3. **Output your understanding + 2-3 questions**, max:
+
+           ```
+           ## What I understand
+           {1-2 sentences restating the request}
+
+           ## What I found
+           - `{file:line}` — {how it relates}
+           - `{file:line}` — {how it relates}
+
+           ## Questions before I hand off to plannotator
+           1. {targeted decision question — reference real code}
+           2. {targeted decision question}
+           3. {optional third question}
+           ```
+
+        Ask about **decisions** (scope boundary, extend-vs-new, testing bar),
+        not information you can look up. If you genuinely have no questions,
+        say so and ask them to confirm you're ready to proceed.
+
+        ---
+
+        ## If the user has replied (subsequent iterations):
+
+        Parse their answers. If there's still one real ambiguity, ask ONE
+        follow-up. Otherwise, summarize the resolved intent:
+
+        ```
+        ## Ready for plannotator
+
+        **Building**: {clear 1-2 sentence description}
+        **In scope**: {bullets}
+        **Out of scope**: {bullets}
+        **Key decisions**: {bullets}
+        **Files likely to change**: {bullets}
+        ```
+
+        Tell them: "Say **ready** to hand off to plannotator, or reply with
+        any last adjustments."
+
+        ---
+
+        ## Signal rules (READ CAREFULLY)
+
+        - ONLY emit `<promise>READY_FOR_PLAN</promise>` when the user's latest
+          message contains explicit approval ("ready", "go", "let's do it",
+          "proceed", "approved").
+        - A question or any revision request = do NOT emit the signal.
+        - If you're unsure whether it's approval, ask — do NOT emit the signal.
+      until: READY_FOR_PLAN
+      max_iterations: 6
+      interactive: true
+      gate_message: |
+        Answer the questions, push back on the scoping, or say "ready" to hand
+        off to plannotator for structured plan review.
+
+  # ═══════════════════════════════════════════════════════════════
+  # PHASE 2: PLAN — Pi session submits plan via plannotator
+  # Human approves/denies over HTTP on 127.0.0.1:19432.
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: plannotator-plan
+    depends_on: [clarify]
+    provider: pi
+    model: openai-codex/gpt-5.4-mini
+    # Human review happens over HTTP — generous idle timeout so the session
+    # stays alive while the reviewer thinks.
+    idle_timeout: 3600000 # 1 hour
+    prompt: |
+      # Plannotator-PIV — Plan Phase (PLANNING ONLY)
+
+      ╔══════════════════════════════════════════════════════════════╗
+      ║  ⚠  YOU ARE A PLANNER. YOU ARE NOT AN IMPLEMENTER.           ║
+      ║                                                              ║
+      ║  Your ENTIRE job is:                                         ║
+      ║    1. Write PLAN.md                                          ║
+      ║    2. Submit it via plannotator_submit_plan                  ║
+      ║    3. Iterate on PLAN.md if denied                           ║
+      ║    4. On approval → PRINT ONE LINE AND EXIT                  ║
+      ║                                                              ║
+      ║  You will NEVER:                                             ║
+      ║    • Edit any file other than PLAN.md                        ║
+      ║    • Run bash, agent_browser, cron_create, or any tool that  ║
+      ║      inspects or modifies source code                        ║
+      ║    • "Get a head start" on implementation after approval     ║
+      ║    • Open a browser, start a dev server, or run tests        ║
+      ║                                                              ║
+      ║  A downstream node (Claude) handles ALL implementation.      ║
+      ║  If you start coding here, you are WRONG and the workflow    ║
+      ║  will fail.                                                  ║
+      ╚══════════════════════════════════════════════════════════════╝
+
+      **Resolved intent from the clarify phase**:
+      $clarify.output
+
+      ---
+
+      ## Step 1: Write PLAN.md
+
+      Use the write tool on `PLAN.md` (and ONLY that file). Structure:
+
+      ```markdown
+      # Plan: {feature name}
+
+      ## Summary
+      {1-2 sentences — what and why}
+
+      ## In Scope
+      - {bullet}
+      ## Out of Scope
+      - {bullet}
+
+      ## Architecture Decisions
+      - {decision — rationale}
+
+      ## Tasks
+      - [ ] Task 1: {ACTION} `{path}` — {what and why}
+      - [ ] Task 2: {ACTION} `{path}` — {what and why}
+      - [ ] Task N: {ACTION} `{path}` — {what and why}
+
+      ## Validation
+      - {command(s) that prove the feature works}
+      - {lint / type-check / test commands}
+
+      ## Risks
+      - {risk} — {mitigation}
+      ```
+
+      Every task must be atomic, name a specific file, and describe a
+      verifiable action. Follow any conventions you saw in CLAUDE.md
+      (if present — you may READ CLAUDE.md and README.md for conventions,
+      but do NOT read or edit any source files).
+
+      ## Step 2: Submit for review
+
+      Call `plannotator_submit_plan`. The tool will:
+      - Emit a review URL (127.0.0.1:19432) via notify() — the reviewer sees
+        this in their Archon chat/CLI stream.
+      - Block until the reviewer POSTs /api/approve or /api/deny.
+
+      ## Step 3: Handle the reviewer's decision
+
+      ### Approved
+      You are DONE. Full stop. Do ALL of the following and nothing else:
+        1. Print exactly one line: `PLAN APPROVED — handing off to implement node.`
+        2. Exit.
+
+      DO NOT:
+        - Read any source files ("just to double-check the plan")
+        - Run any validation commands
+        - Open the agent_browser or any web UI
+        - Start a dev server
+        - Begin editing the files listed in the plan
+        - Even in a "small preview" capacity — NO IMPLEMENTATION
+
+      The plannotator extension may tell you "full tool access is now unlocked"
+      after approval. Ignore that invitation. Those tools are unlocked for the
+      NEXT node, not for you. Your job ended at the approval.
+
+      ### Denied with feedback
+      Use the edit tool on `PLAN.md` (not write — edit) to address the feedback,
+      then call `plannotator_submit_plan` again. Repeat until approved.
+
+      ## Rules (non-negotiable)
+
+      - PLAN.md is the ONLY file you may create or edit, ever, during this node.
+      - The only files you may READ are: PLAN.md, CLAUDE.md, README.md.
+      - Do NOT call `bash`, `agent_browser`, `cron_create`, or any tool that
+        inspects, modifies, or executes source code.
+      - After approval, do NOT start implementing, previewing, testing, or
+        "warming up" — the next node handles execution in a fresh session.
+      - If `plannotator_submit_plan` errors, surface the error verbatim —
+        do not silently fall back to writing PLAN.md and hoping for the best.
+      - Do not ask clarifying questions — intent was resolved in the clarify
+        phase. Make reasonable assumptions and call them out in the plan.
+
+  # ═══════════════════════════════════════════════════════════════
+  # PHASE 2b: VERIFY — Sanity check the approved plan landed on disk
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: verify-plan
+    depends_on: [plannotator-plan]
+    bash: |
+      if [ ! -f PLAN.md ]; then
+        echo "FAIL: PLAN.md was not created — plannotator planning phase did not produce a plan"
+        exit 1
+      fi
+      if ! grep -qE '^- \[.\]' PLAN.md; then
+        echo "FAIL: PLAN.md has no task checkboxes — incomplete plan"
+        cat PLAN.md
+        exit 1
+      fi
+      task_count=$(grep -cE '^- \[.\]' PLAN.md)
+      echo "PASS: PLAN.md has $task_count task(s)"
+      cp PLAN.md "$ARTIFACTS_DIR/PLAN.md"
+
+  # ═══════════════════════════════════════════════════════════════
+  # PHASE 3: IMPLEMENT — Task-by-task Ralph loop against PLAN.md
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: implement
+    depends_on: [verify-plan]
+    idle_timeout: 600000
+    loop:
+      prompt: |
+        # Plannotator-PIV — Implementation Agent
+
+        You are an autonomous coding agent in a FRESH session — no memory of
+        previous iterations. Read the approved plan from disk, implement ONE
+        task, validate, commit, exit. The loop engine starts a fresh session
+        for the next task.
+
+        **Golden Rule**: If validation fails, fix it before committing.
+        Never commit broken code.
+
+        ---
+
+        ## Phase 0: Load State
+
+        1. Read `PLAN.md` (the approved plan — source of truth).
+        2. Read `CLAUDE.md` (conventions).
+        3. Check progress: `cat .archon-piv-progress.txt 2>/dev/null || true`.
+        4. `git log --oneline -10` and `git status`.
+
+        ## Phase 1: Select Next Task
+
+        Tasks are `- [ ]` / `- [x]` checkboxes in PLAN.md. Cross-reference
+        with `.archon-piv-progress.txt` and recent commits to pick the next
+        unchecked task.
+
+        If every task is checked → skip to Phase 4 (Complete).
+
+        Announce:
+        ```
+        -- Task Selected --
+        Task: {N} — {title}
+        File: {path}
+        ```
+
+        ## Phase 2: Implement
+
+        1. Read the file(s) the task touches.
+        2. Make changes that follow CLAUDE.md conventions.
+        3. Type-check after each file: `bun run type-check 2>&1 || true`.
+
+        ## Phase 3: Validate + Commit
+
+        ```bash
+        bun run type-check && bun run lint && bun run test
+        ```
+
+        If validation fails, fix (up to 3 attempts). If you can't fix, note it
+        in `.archon-piv-progress.txt` and exit without committing.
+
+        If validation passes:
+        ```bash
+        git add -A
+        git commit -m "$(cat <<'EOF'
+        {type}: {short task description}
+
+        Task {N} from PLAN.md
+        EOF
+        )"
+        ```
+
+        Update PLAN.md to mark this task `- [x]` and append to
+        `.archon-piv-progress.txt`:
+        ```
+        Task {N}: {title} — {commit short hash}
+        ```
+
+        ## Phase 4: Complete
+
+        If every task in PLAN.md is now checked:
+        1. Run full validation: `bun run validate 2>&1 || true`
+        2. Signal: `<promise>IMPL_DONE</promise>`
+
+        Otherwise, end normally — the loop starts a fresh iteration for the
+        next task.
+      until: IMPL_DONE
+      max_iterations: 20
+      fresh_context: true
+
+  # ═══════════════════════════════════════════════════════════════
+  # PHASE 4: VALIDATE — Final review and summary
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: final-review
+    depends_on: [implement]
+    context: fresh
+    prompt: |
+      # Plannotator-PIV — Final Review
+
+      Implementation is complete. Produce a short status report.
+
+      ## Step 1: Gather context
+
+      ```bash
+      bun run validate 2>&1 || (bun run type-check && bun run lint && bun run test && bun run format:check)
+      git log --oneline $(git merge-base HEAD $BASE_BRANCH)..HEAD
+      git diff --stat $(git merge-base HEAD $BASE_BRANCH)..HEAD
+      ```
+
+      Read `PLAN.md` and `.archon-piv-progress.txt`.
+
+      ## Step 2: Cross-check plan vs. reality
+
+      For each task in PLAN.md:
+      - Is it checked?
+      - Does a commit exist for it?
+      - Do the changed files match what the task described?
+
+      Flag anything that drifted. Fix small things (formatting, imports) on
+      the spot and commit as `chore: post-impl tidy`.
+
+      ## Step 3: Output
+
+      ```
+      ===============================================================
+      PLANNOTATOR-PIV — SUMMARY
+      ===============================================================
+
+      Feature: {from PLAN.md}
+      Branch: {current branch}
+
+      -- Tasks --
+      {tasks from PLAN.md with status}
+
+      -- Commits --
+      {git log}
+
+      -- Validation --
+      type-check: PASS/FAIL
+      lint:       PASS/FAIL
+      tests:      PASS/FAIL
+      format:     PASS/FAIL
+
+      -- Recommendation --
+      {READY FOR PR / NEEDS FIXES — with specifics}
+      ===============================================================
+      ```
