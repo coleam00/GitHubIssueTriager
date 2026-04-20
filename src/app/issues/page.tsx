@@ -75,7 +75,7 @@ export default async function IssuesPage({
                 <span className="text-accentMuted text-sm w-14">#{i.github_number}</span>
                 <Link
                   href={`/issues/${i.github_number}`}
-                  className="flex-1 no-underline text-white hover:text-accent"
+                  className="flex-1 no-underline text-foreground hover:text-accent"
                 >
                   {i.title}
                 </Link>

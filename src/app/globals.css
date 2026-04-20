@@ -2,19 +2,125 @@
 @tailwind components;
 @tailwind utilities;
 
+:root,
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --color-page: #0b1020;
+  --color-surface: #121832;
+  --color-panel: #121832;
+  --color-text: #e5ecff;
+  --color-muted: #a9b7de;
+  --color-accent: #7cc6fe;
+  --color-accent-hover: #a8dcff;
+  --color-border: #1e2749;
+  --color-btn-bg: #1a2a4a;
+  --color-btn-hover: #243659;
+  --color-btn-border: #3c6a99;
+  --color-btn-text: #cfe4ff;
+  --color-btn-primary-bg: #2a5aa0;
+  --color-btn-primary-hover: #3568b5;
+  --color-btn-primary-border: #4a8ad0;
+  --color-btn-primary-text: #ffffff;
+  --chip-base-bg: #121832;
+  --chip-base-border: #1e2749;
+  --chip-base-text: #e5ecff;
+  --chip-p0-bg: #4a0e15;
+  --chip-p0-border: #7a1a24;
+  --chip-p0-text: #ffb3bd;
+  --chip-p1-bg: #4a2a0a;
+  --chip-p1-border: #7a4a1a;
+  --chip-p1-text: #ffd28c;
+  --chip-p2-bg: #0a2e4a;
+  --chip-p2-border: #1a507a;
+  --chip-p2-text: #a8d4ff;
+  --chip-p3-bg: #1a2a1f;
+  --chip-p3-border: #2a4a35;
+  --chip-p3-text: #a8d4b8;
+  --chip-bug-bg: #3a0e15;
+  --chip-bug-border: #6a1a24;
+  --chip-bug-text: #ff9ba6;
+  --chip-feature-bg: #0e2a3a;
+  --chip-feature-border: #1a4a6a;
+  --chip-feature-text: #8ed0ff;
+  --chip-question-bg: #2a1a3a;
+  --chip-question-border: #4a2a6a;
+  --chip-question-text: #d1a8ff;
+  --chip-docs-bg: #1a2a1a;
+  --chip-docs-border: #2a4a2a;
+  --chip-docs-text: #a8e0a8;
+  --chip-chore-bg: #2a2a2a;
+  --chip-chore-border: #444444;
+  --chip-chore-text: #c8c8c8;
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+  --color-page: #f7f9ff;
+  --color-surface: #eef3fb;
+  --color-panel: #ffffff;
+  --color-text: #0f1d37;
+  --color-muted: #5e6d88;
+  --color-accent: #2d6cdf;
+  --color-accent-hover: #1e5ed0;
+  --color-border: #d4ddeb;
+  --color-btn-bg: #e7eef9;
+  --color-btn-hover: #dbe6f4;
+  --color-btn-border: #adc1e4;
+  --color-btn-text: #0f1d37;
+  --color-btn-primary-bg: #2d6cdf;
+  --color-btn-primary-hover: #1e5ed0;
+  --color-btn-primary-border: #1e5ed0;
+  --color-btn-primary-text: #ffffff;
+  --chip-base-bg: #eef2f8;
+  --chip-base-border: #d4ddeb;
+  --chip-base-text: #1d2b44;
+  --chip-p0-bg: #fde9ec;
+  --chip-p0-border: #f0a9b6;
+  --chip-p0-text: #9f1f37;
+  --chip-p1-bg: #fff1df;
+  --chip-p1-border: #f0c085;
+  --chip-p1-text: #9b5d10;
+  --chip-p2-bg: #e3f0ff;
+  --chip-p2-border: #a7c5eb;
+  --chip-p2-text: #205a9d;
+  --chip-p3-bg: #e6f7ec;
+  --chip-p3-border: #a8d6b7;
+  --chip-p3-text: #2a6d49;
+  --chip-bug-bg: #fdecef;
+  --chip-bug-border: #f1b2be;
+  --chip-bug-text: #a11e33;
+  --chip-feature-bg: #e5f2ff;
+  --chip-feature-border: #a9c9ea;
+  --chip-feature-text: #1d619e;
+  --chip-question-bg: #f2e9ff;
+  --chip-question-border: #c9b0ef;
+  --chip-question-text: #6a3ea0;
+  --chip-docs-bg: #e6f7e8;
+  --chip-docs-border: #b3d8b6;
+  --chip-docs-text: #2d7a3a;
+  --chip-chore-bg: #edf1f5;
+  --chip-chore-border: #cad5e4;
+  --chip-chore-text: #59677d;
+}
+
 html,
 body {
-  background-color: #0b1020;
-  color: #e5ecff;
+  background-color: var(--color-page);
+  color: var(--color-text);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
+body {
+  min-height: 100vh;
+}
+
 a {
-  color: #7cc6fe;
+  color: var(--color-accent);
+  transition: color 0.15s ease;
 }
 
 a:hover {
-  color: #a8dcff;
+  color: var(--color-accent-hover);
 }
 
 .chip {
@@ -24,20 +130,21 @@ a:hover {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  border: 1px solid #1e2749;
-  background: #121832;
+  border: 1px solid var(--chip-base-border);
+  background: var(--chip-base-bg);
+  color: var(--chip-base-text);
 }
 
-.chip-P0 { background: #4a0e15; border-color: #7a1a24; color: #ffb3bd; }
-.chip-P1 { background: #4a2a0a; border-color: #7a4a1a; color: #ffd28c; }
-.chip-P2 { background: #0a2e4a; border-color: #1a507a; color: #a8d4ff; }
-.chip-P3 { background: #1a2a1f; border-color: #2a4a35; color: #a8d4b8; }
+.chip-P0 { background: var(--chip-p0-bg); border-color: var(--chip-p0-border); color: var(--chip-p0-text); }
+.chip-P1 { background: var(--chip-p1-bg); border-color: var(--chip-p1-border); color: var(--chip-p1-text); }
+.chip-P2 { background: var(--chip-p2-bg); border-color: var(--chip-p2-border); color: var(--chip-p2-text); }
+.chip-P3 { background: var(--chip-p3-bg); border-color: var(--chip-p3-border); color: var(--chip-p3-text); }
 
-.chip-bug { background: #3a0e15; color: #ff9ba6; border-color: #6a1a24; }
-.chip-feature { background: #0e2a3a; color: #8ed0ff; border-color: #1a4a6a; }
-.chip-question { background: #2a1a3a; color: #d1a8ff; border-color: #4a2a6a; }
-.chip-docs { background: #1a2a1a; color: #a8e0a8; border-color: #2a4a2a; }
-.chip-chore { background: #2a2a2a; color: #c8c8c8; border-color: #444; }
+.chip-bug { background: var(--chip-bug-bg); color: var(--chip-bug-text); border-color: var(--chip-bug-border); }
+.chip-feature { background: var(--chip-feature-bg); color: var(--chip-feature-text); border-color: var(--chip-feature-border); }
+.chip-question { background: var(--chip-question-bg); color: var(--chip-question-text); border-color: var(--chip-question-border); }
+.chip-docs { background: var(--chip-docs-bg); color: var(--chip-docs-text); border-color: var(--chip-docs-border); }
+.chip-chore { background: var(--chip-chore-bg); color: var(--chip-chore-text); border-color: var(--chip-chore-border); }
 
 .btn {
   display: inline-flex;
@@ -47,15 +154,15 @@ a:hover {
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
-  border: 1px solid #3c6a99;
-  background: #1a2a4a;
-  color: #cfe4ff;
+  border: 1px solid var(--color-btn-border);
+  background: var(--color-btn-bg);
+  color: var(--color-btn-text);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .btn:hover:not(:disabled) {
-  background: #243659;
+  background: var(--color-btn-hover);
 }
 
 .btn:disabled {
@@ -64,18 +171,18 @@ a:hover {
 }
 
 .btn-primary {
-  background: #2a5aa0;
-  border-color: #4a8ad0;
-  color: white;
+  background: var(--color-btn-primary-bg);
+  border-color: var(--color-btn-primary-border);
+  color: var(--color-btn-primary-text);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #3568b5;
+  background: var(--color-btn-primary-hover);
 }
 
 .panel {
-  background: #121832;
-  border: 1px solid #1e2749;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 20px;
 }

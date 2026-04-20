@@ -126,7 +126,7 @@ export default async function IssueDetail({ params }: { params: Promise<{ number
           </a>
         </div>
         {issue.body && (
-          <div className="whitespace-pre-wrap text-sm text-accent/90 bg-surface p-3 rounded border border-border max-h-64 overflow-auto">
+          <div className="whitespace-pre-wrap text-sm text-foreground bg-surface p-3 rounded border border-border max-h-64 overflow-auto">
             {issue.body}
           </div>
         )}
@@ -168,7 +168,7 @@ export default async function IssueDetail({ params }: { params: Promise<{ number
             {similar.map((s) => (
               <li key={s.github_number} className="py-2 flex items-center gap-3 text-sm">
                 <span className="text-accentMuted w-12">#{s.github_number}</span>
-                <Link href={`/issues/${s.github_number}`} className="flex-1 no-underline">
+                <Link href={`/issues/${s.github_number}`} className="flex-1 no-underline text-foreground hover:text-accent">
                   {s.title}
                 </Link>
                 <span className="chip">{(s.similarity * 100).toFixed(0)}% match</span>

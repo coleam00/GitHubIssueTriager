@@ -161,7 +161,7 @@ export default async function Home() {
                 <span className="text-accentMuted text-sm w-12">#{i.github_number}</span>
                 <Link
                   href={`/issues/${i.github_number}`}
-                  className="flex-1 no-underline text-white hover:text-accent"
+                  className="flex-1 no-underline text-foreground hover:text-accent"
                 >
                   {i.title}
                 </Link>

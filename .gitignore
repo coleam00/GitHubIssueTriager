@@ -12,3 +12,7 @@ build
 next-env.d.ts
 agent-browser-runs
 tsconfig.tsbuildinfo
+
+# Archon workflow scratch files
+PLAN.md
+.archon-piv-progress.txt
