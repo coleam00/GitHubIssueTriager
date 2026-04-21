@@ -3,13 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "tsx scripts/dev.ts",
     "build": "next build",
-    "start": "next start -p 3000",
+    "start": "tsx scripts/dev.ts start",
+    "port": "tsx scripts/assign-port.ts",
     "migrate": "tsx scripts/migrate.ts",
     "sync": "tsx scripts/sync-issues.ts",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "smoke": "tsx scripts/smoke.ts",
+    "typecheck": "tsc --noEmit",
+    "validate": "pnpm typecheck && pnpm smoke"
   },
+  "packageManager": "pnpm@9.12.3",
   "dependencies": {
     "next": "^15.0.3",
     "react": "^19.0.0",

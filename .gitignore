@@ -16,3 +16,21 @@ tsconfig.tsbuildinfo
 # Archon workflow scratch files
 PLAN.md
 .archon-piv-progress.txt
+
+# PI loop scratch
+.pi/
+.pi-loop.json.lock
+
+# Agents tooling workspace (per-session state, not checked in)
+.agents/
+
+# Per-machine Claude Code permissions (auto-generated, never commit)
+.claude/settings.local.json
+
+# Demo notes (off-camera cheat sheets)
+.claude/demo-notes/
+
+# Video prep artifacts — not part of the repo proper
+RECORDING_GUIDE.md
+scripts/prove-bug.ts
+scripts/prove-bug-live.ts

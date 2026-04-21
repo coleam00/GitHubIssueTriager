@@ -1,0 +1,143 @@
+# Triager-flavored idea-to-pr — wraps Archon's bundled idea-to-pr flow with a
+# disposable Neon branch so schema churn in a run never touches the main branch.
+#
+# Input: GitHub issue reference or free-text feature description.
+# Output: PR with 5-reviewer fan-out complete, Neon branch reaped.
+
+name: triager-idea-to-pr
+description: |
+  Use when: Shipping a feature in this repo via the full Archon loop with
+  database isolation. Triggers: "triager idea to pr", "idea to pr with neon".
+  NOT for: Quick fixes (use archon-fix-github-issue), plan-only runs.
+
+nodes:
+  # ═══════════════════════════════════════════════════════════════════
+  # PHASE -1: NEON BRANCH  (pre-hook, deposits DATABASE_URL into env)
+  # ═══════════════════════════════════════════════════════════════════
+
+  - id: neon-branch
+    bash: |
+      set -e
+      if [ -z "${NEON_PROJECT_ID:-}" ] || [ -z "${NEON_API_KEY:-}" ]; then
+        echo "::WARN:: NEON_PROJECT_ID/NEON_API_KEY unset — skipping Neon isolation"
+        echo "BRANCH_NAME="
+        exit 0
+      fi
+      BRANCH_NAME="run-$(date +%s)-$$"
+      echo "Creating Neon branch $BRANCH_NAME"
+      neonctl branches create \
+        --project-id "$NEON_PROJECT_ID" \
+        --name "$BRANCH_NAME" \
+        --api-key "$NEON_API_KEY" >/dev/null
+      URL=$(neonctl connection-string "$BRANCH_NAME" \
+        --project-id "$NEON_PROJECT_ID" \
+        --api-key "$NEON_API_KEY" \
+        --pooled --database-name neondb)
+      echo "DATABASE_URL=$URL" > .env.archon-run
+      echo "NEON_BRANCH_NAME=$BRANCH_NAME" >> .env.archon-run
+      pnpm migrate
+      echo "$BRANCH_NAME"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # PHASES 0-6: DELEGATE TO BUNDLED archon-idea-to-pr NODES
+  # ═══════════════════════════════════════════════════════════════════
+
+  - id: create-plan
+    command: archon-create-plan
+    depends_on: [neon-branch]
+    context: fresh
+
+  - id: plan-setup
+    command: archon-plan-setup
+    depends_on: [create-plan]
+    context: fresh
+
+  - id: confirm-plan
+    command: archon-confirm-plan
+    depends_on: [plan-setup]
+    context: fresh
+
+  - id: implement-tasks
+    command: archon-implement-tasks
+    depends_on: [confirm-plan]
+    context: fresh
+    model: claude-opus-4-6[1m]
+
+  - id: validate
+    command: archon-validate
+    depends_on: [implement-tasks]
+    context: fresh
+
+  - id: finalize-pr
+    command: archon-finalize-pr
+    depends_on: [validate]
+    context: fresh
+
+  - id: review-scope
+    command: archon-pr-review-scope
+    depends_on: [finalize-pr]
+    context: fresh
+
+  - id: sync
+    command: archon-sync-pr-with-main
+    depends_on: [review-scope]
+    context: fresh
+
+  - id: code-review
+    command: archon-code-review-agent
+    depends_on: [sync]
+    context: fresh
+
+  - id: error-handling
+    command: archon-error-handling-agent
+    depends_on: [sync]
+    context: fresh
+
+  - id: test-coverage
+    command: archon-test-coverage-agent
+    depends_on: [sync]
+    context: fresh
+
+  - id: comment-quality
+    command: archon-comment-quality-agent
+    depends_on: [sync]
+    context: fresh
+
+  - id: docs-impact
+    command: archon-docs-impact-agent
+    depends_on: [sync]
+    context: fresh
+
+  - id: synthesize
+    command: archon-synthesize-review
+    depends_on: [code-review, error-handling, test-coverage, comment-quality, docs-impact]
+    trigger_rule: one_success
+    context: fresh
+
+  - id: implement-fixes
+    command: archon-implement-review-fixes
+    depends_on: [synthesize]
+    context: fresh
+
+  - id: workflow-summary
+    command: archon-workflow-summary
+    depends_on: [implement-fixes]
+    context: fresh
+
+  # ═══════════════════════════════════════════════════════════════════
+  # PHASE 9: NEON CLEANUP  (always runs, even on upstream failure)
+  # ═══════════════════════════════════════════════════════════════════
+
+  - id: neon-cleanup
+    depends_on: [workflow-summary]
+    trigger_rule: all_done
+    bash: |
+      if [ ! -f .env.archon-run ]; then exit 0; fi
+      . .env.archon-run
+      if [ -n "${NEON_BRANCH_NAME:-}" ]; then
+        echo "Deleting Neon branch $NEON_BRANCH_NAME"
+        neonctl branches delete "$NEON_BRANCH_NAME" \
+          --project-id "$NEON_PROJECT_ID" \
+          --api-key "$NEON_API_KEY" 2>/dev/null || true
+      fi
+      rm -f .env.archon-run

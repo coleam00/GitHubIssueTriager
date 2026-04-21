@@ -1,0 +1,29 @@
+{
+  "hooks": {
+    "WorktreeCreate": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/worktree-setup.sh \"$CLAUDE_WORKTREE_PATH\"",
+            "statusMessage": "Provisioning Neon branch for worktree..."
+          }
+        ]
+      }
+    ],
+    "WorktreeRemove": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/worktree-teardown.sh \"$CLAUDE_WORKTREE_PATH\"",
+            "statusMessage": "Cleaning up Neon branch..."
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "codex@openai-codex": true
+  }
+}
