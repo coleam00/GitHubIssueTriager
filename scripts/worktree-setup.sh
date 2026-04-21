@@ -7,6 +7,18 @@ WORKTREE_DIR="${1:-$PWD}"
 WORKTREE_NAME="$(basename "$WORKTREE_DIR")"
 BRANCH_NAME="wt-${WORKTREE_NAME}"
 
+# Source parent .env so NEON_PROJECT_ID / NEON_API_KEY / etc. are available.
+# The main worktree is the first entry from `git worktree list --porcelain`.
+MAIN_ROOT="$(git -C "$WORKTREE_DIR" worktree list --porcelain | awk '/^worktree /{print $2; exit}')"
+PARENT_ENV="$MAIN_ROOT/.env"
+if [ -f "$PARENT_ENV" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  # Strip CRLF line endings so WSL/Linux bash doesn't try to exec `\r` as a command.
+  . <(sed 's/\r$//' "$PARENT_ENV")
+  set +a
+fi
+
 if [ -z "${NEON_PROJECT_ID:-}" ] || [ -z "${NEON_API_KEY:-}" ]; then
   echo "[worktree-setup] NEON_PROJECT_ID/NEON_API_KEY unset — skipping Neon branch" >&2
   exit 0
@@ -28,7 +40,6 @@ URL=$(neonctl connection-string "$BRANCH_NAME" \
   --pooled --database-name neondb)
 
 # Derive worktree .env from parent .env but override DATABASE_URL to the branch URL.
-PARENT_ENV="$(git -C "$WORKTREE_DIR" rev-parse --git-common-dir)/../.env"
 if [ -f "$PARENT_ENV" ]; then
   grep -v "^DATABASE_URL=" "$PARENT_ENV" > "$WORKTREE_DIR/.env"
 fi
