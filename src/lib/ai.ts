@@ -42,7 +42,7 @@ P0 = broken/blocking many users. P1 = important, clear user impact. P2 = nice to
 
   const user = `Title: ${input.title}
 Labels: ${input.labels.join(", ") || "(none)"}
-Body: ${(input.body || "").slice(0, 3000)}`;
+Body: ${(input.body || "").slice(0, 300)}`;
 
   const res = await client.chat.completions.create({
     model: CHAT_MODEL,
