@@ -14,4 +14,5 @@ Next.js 15 (App Router) + React 19 + TypeScript. Neon Postgres with `pgvector` (
 ## Non-obvious
 - The classifier falls back silently when `OPENAI_API_KEY` is missing — don't wrap those call sites in try/catch; the fallback is the happy path in tests.
 - `classifications` is one-to-many; the dashboard reads the latest row per issue. If you add a field, write a view instead of mutating history.
+- `/api/classify-batch` streams NDJSON and runs up to 4 classifications in parallel (`CONCURRENCY` in its `route.ts`). Tune only if the model provider's rate limit genuinely allows it.
 - Never commit `.env`. `NEON_API_KEY` and per-branch URLs stay local.
