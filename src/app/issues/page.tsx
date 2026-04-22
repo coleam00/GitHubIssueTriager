@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { sql } from "@/lib/db";
+import PriorityBadge from "@/components/PriorityBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +81,7 @@ export default async function IssuesPage({
                   {i.title}
                 </Link>
                 {i.category && <span className={`chip chip-${i.category}`}>{i.category}</span>}
-                {i.priority && <span className={`chip chip-${i.priority}`}>{i.priority}</span>}
+                <PriorityBadge priority={i.priority} />
                 {i.complexity && <span className="chip">{i.complexity}</span>}
                 <span className="text-xs text-accentMuted w-14 text-right">{i.state}</span>
               </li>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { sql } from "@/lib/db";
 import SyncButton from "@/components/SyncButton";
+import PriorityBadge from "@/components/PriorityBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -136,7 +137,7 @@ export default async function Home() {
             <ul className="space-y-2">
               {byPriority.map((r) => (
                 <li key={r.priority} className="flex justify-between items-center">
-                  <span className={`chip chip-${r.priority}`}>{r.priority}</span>
+                  <PriorityBadge priority={r.priority} />
                   <span className="text-lg font-semibold">{r.count}</span>
                 </li>
               ))}
@@ -166,7 +167,7 @@ export default async function Home() {
                   {i.title}
                 </Link>
                 {i.category && <span className={`chip chip-${i.category}`}>{i.category}</span>}
-                {i.priority && <span className={`chip chip-${i.priority}`}>{i.priority}</span>}
+                <PriorityBadge priority={i.priority} />
                 <span className="text-xs text-accentMuted w-12 text-right">{i.state}</span>
               </li>
             ))}
