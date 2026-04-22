@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { sql } from "@/lib/db";
+import { STALE_DAYS } from "@/lib/types";
 import IssueActions from "@/components/IssueActions";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,7 @@ type IssueRow = {
   url: string;
   labels: string[];
   github_created_at: string;
+  github_updated_at: string | null;
 };
 
 type LatestClassification = {
@@ -52,7 +54,7 @@ type RunRow = {
 
 async function fetchAll(number: number) {
   const [issues] = (await sql`
-    SELECT id, github_repo, github_number, title, body, state, author, url, labels, github_created_at
+    SELECT id, github_repo, github_number, title, body, state, author, url, labels, github_created_at, github_updated_at
     FROM issues WHERE github_number = ${number} LIMIT 1
   `) as unknown as IssueRow[][];
   return issues;
@@ -65,11 +67,18 @@ export default async function IssueDetail({ params }: { params: Promise<{ number
   if (!Number.isSafeInteger(number) || number < 1 || number > 2147483647) notFound();
 
   const issue = ((await sql`
-    SELECT id, github_repo, github_number, title, body, state, author, url, labels, github_created_at
+    SELECT id, github_repo, github_number, title, body, state, author, url, labels, github_created_at, github_updated_at
     FROM issues WHERE github_number = ${number} LIMIT 1
   `) as unknown as IssueRow[])[0];
 
   if (!issue) notFound();
+
+  const staleSince =
+    issue.state === "open" &&
+    issue.github_updated_at &&
+    Date.now() - new Date(issue.github_updated_at).getTime() > STALE_DAYS * 86_400_000
+      ? new Date(issue.github_updated_at)
+      : null;
 
   const classification = ((await sql`
     SELECT category, priority, complexity, summary, reasoning, model, created_at
@@ -115,6 +124,11 @@ export default async function IssueDetail({ params }: { params: Promise<{ number
           <span className="text-accentMuted">#{issue.github_number}</span>
           <h1 className="text-2xl font-bold flex-1">{issue.title}</h1>
           <span className="chip">{issue.state}</span>
+          {staleSince && (
+            <span className="chip border-accent text-accent" data-testid="stale-badge">
+              Stale since {staleSince.toLocaleDateString()}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-wrap text-sm">
           {issue.author && <span className="text-accentMuted">by {issue.author}</span>}
