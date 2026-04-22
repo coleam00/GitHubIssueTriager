@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { sql } from "@/lib/db";
+import { STALE_DAYS } from "@/lib/types";
 import SyncButton from "@/components/SyncButton";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 type Stats = {
   total: number;
   open: number;
+  stale: number;
   classified: number;
   planned: number;
   runs: number;
@@ -28,6 +30,9 @@ async function getStats(): Promise<Stats> {
     SELECT
       (SELECT COUNT(*)::int FROM issues) AS total,
       (SELECT COUNT(*)::int FROM issues WHERE state = 'open') AS open,
+      (SELECT COUNT(*)::int FROM issues
+         WHERE state = 'open'
+           AND github_updated_at < NOW() - ${STALE_DAYS} * INTERVAL '1 day') AS stale,
       (SELECT COUNT(DISTINCT issue_id)::int FROM classifications) AS classified,
       (SELECT COUNT(DISTINCT issue_id)::int FROM plans) AS planned,
       (SELECT COUNT(*)::int FROM runs) AS runs
@@ -101,9 +106,10 @@ export default async function Home() {
         <SyncButton />
       </section>
 
-      <section className="grid grid-cols-2 md:grid-cols-5 gap-4" data-testid="stats-row">
+      <section className="grid grid-cols-2 md:grid-cols-6 gap-4" data-testid="stats-row">
         <StatCard label="Issues" value={stats.total} />
         <StatCard label="Open" value={stats.open} />
+        <StatCard label="Stale" value={stats.stale} />
         <StatCard label="Classified" value={stats.classified} />
         <StatCard label="Planned" value={stats.planned} />
         <StatCard label="Runs" value={stats.runs} />

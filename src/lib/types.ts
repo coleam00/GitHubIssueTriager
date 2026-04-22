@@ -1,3 +1,5 @@
+export const STALE_DAYS = 90;
+
 export type Issue = {
   id: number;
   github_repo: string;

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { sql } from "@/lib/db";
+import { STALE_DAYS } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,13 @@ type Row = {
   complexity: string | null;
 };
 
-async function getIssues(filter: { category?: string; priority?: string; state?: string }): Promise<Row[]> {
+async function getIssues(filter: {
+  category?: string;
+  priority?: string;
+  state?: string;
+  stale?: string;
+}): Promise<Row[]> {
+  const staleOn = filter.stale === "1" ? 1 : 0;
   const rows = (await sql`
     SELECT
       i.id,
@@ -33,6 +40,10 @@ async function getIssues(filter: { category?: string; priority?: string; state?:
       (${filter.state ?? null}::text IS NULL OR i.state = ${filter.state ?? null})
       AND (${filter.category ?? null}::text IS NULL OR latest.category = ${filter.category ?? null})
       AND (${filter.priority ?? null}::text IS NULL OR latest.priority = ${filter.priority ?? null})
+      AND (${staleOn} = 0 OR (
+        i.state = 'open'
+        AND i.github_updated_at < NOW() - ${STALE_DAYS} * INTERVAL '1 day'
+      ))
     ORDER BY
       CASE latest.priority WHEN 'P0' THEN 0 WHEN 'P1' THEN 1 WHEN 'P2' THEN 2 WHEN 'P3' THEN 3 ELSE 4 END,
       i.github_created_at DESC
@@ -43,10 +54,11 @@ async function getIssues(filter: { category?: string; priority?: string; state?:
 export default async function IssuesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; priority?: string; state?: string }>;
+  searchParams: Promise<{ category?: string; priority?: string; state?: string; stale?: string }>;
 }) {
   const sp = await searchParams;
   const rows = await getIssues(sp);
+  const staleOn = sp.stale === "1";
 
   const categories = ["bug", "feature", "question", "docs", "chore"];
   const priorities = ["P0", "P1", "P2", "P3"];
@@ -63,6 +75,7 @@ export default async function IssuesPage({
         <FilterRow label="State" current={sp.state} options={states} param="state" sp={sp} />
         <FilterRow label="Category" current={sp.category} options={categories} param="category" sp={sp} />
         <FilterRow label="Priority" current={sp.priority} options={priorities} param="priority" sp={sp} />
+        <StaleToggle active={staleOn} sp={sp} />
       </div>
 
       <div className="panel">
@@ -92,6 +105,8 @@ export default async function IssuesPage({
   );
 }
 
+type FilterSearchParams = { category?: string; priority?: string; state?: string; stale?: string };
+
 function FilterRow({
   label,
   options,
@@ -103,7 +118,7 @@ function FilterRow({
   options: string[];
   current: string | undefined;
   param: string;
-  sp: { category?: string; priority?: string; state?: string };
+  sp: FilterSearchParams;
 }) {
   const buildHref = (value: string | null) => {
     const params = new URLSearchParams();
@@ -132,6 +147,27 @@ function FilterRow({
           {o}
         </Link>
       ))}
+    </div>
+  );
+}
+
+function StaleToggle({ active, sp }: { active: boolean; sp: FilterSearchParams }) {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    if (v && k !== "stale") params.set(k, v);
+  }
+  if (!active) params.set("stale", "1");
+  const q = params.toString();
+  const href = q ? `?${q}` : "/issues";
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-xs uppercase tracking-wider text-accentMuted w-20">Stale</span>
+      <Link
+        href={href}
+        className={`chip no-underline ${active ? "border-accent text-accent" : ""}`}
+      >
+        {active ? "showing stale only" : "show stale only"}
+      </Link>
     </div>
   );
 }
