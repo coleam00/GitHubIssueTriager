@@ -1,56 +1,27 @@
 import Link from "next/link";
-import { sql } from "@/lib/db";
+import { listIssues, type IssueFilter } from "@/lib/issues";
 
 export const dynamic = "force-dynamic";
-
-type Row = {
-  id: number;
-  github_number: number;
-  title: string;
-  state: string;
-  category: string | null;
-  priority: string | null;
-  complexity: string | null;
-};
-
-async function getIssues(filter: { category?: string; priority?: string; state?: string }): Promise<Row[]> {
-  const rows = (await sql`
-    SELECT
-      i.id,
-      i.github_number,
-      i.title,
-      i.state,
-      latest.category,
-      latest.priority,
-      latest.complexity
-    FROM issues i
-    LEFT JOIN LATERAL (
-      SELECT category, priority, complexity FROM classifications c
-      WHERE c.issue_id = i.id
-      ORDER BY c.created_at DESC LIMIT 1
-    ) latest ON TRUE
-    WHERE
-      (${filter.state ?? null}::text IS NULL OR i.state = ${filter.state ?? null})
-      AND (${filter.category ?? null}::text IS NULL OR latest.category = ${filter.category ?? null})
-      AND (${filter.priority ?? null}::text IS NULL OR latest.priority = ${filter.priority ?? null})
-    ORDER BY
-      CASE latest.priority WHEN 'P0' THEN 0 WHEN 'P1' THEN 1 WHEN 'P2' THEN 2 WHEN 'P3' THEN 3 ELSE 4 END,
-      i.github_created_at DESC
-  `) as unknown as Row[];
-  return rows;
-}
 
 export default async function IssuesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; priority?: string; state?: string }>;
+  searchParams: Promise<IssueFilter>;
 }) {
   const sp = await searchParams;
-  const rows = await getIssues(sp);
+  const rows = await listIssues(sp);
 
   const categories = ["bug", "feature", "question", "docs", "chore"];
   const priorities = ["P0", "P1", "P2", "P3"];
   const states = ["open", "closed"];
+
+  const exportQuery = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    if (v) exportQuery.set(k, v);
+  }
+  const exportHref = exportQuery.toString()
+    ? `/issues/export?${exportQuery.toString()}`
+    : "/issues/export";
 
   return (
     <div className="space-y-6">
@@ -63,6 +34,16 @@ export default async function IssuesPage({
         <FilterRow label="State" current={sp.state} options={states} param="state" sp={sp} />
         <FilterRow label="Category" current={sp.category} options={categories} param="category" sp={sp} />
         <FilterRow label="Priority" current={sp.priority} options={priorities} param="priority" sp={sp} />
+        <div className="flex items-center gap-2 flex-wrap pt-2">
+          <span className="text-xs uppercase tracking-wider text-accentMuted w-20">Export</span>
+          <a
+            href={exportHref}
+            className="chip border-accent text-accent no-underline"
+            data-testid="export-csv"
+          >
+            Export CSV
+          </a>
+        </div>
       </div>
 
       <div className="panel">
@@ -103,7 +84,7 @@ function FilterRow({
   options: string[];
   current: string | undefined;
   param: string;
-  sp: { category?: string; priority?: string; state?: string };
+  sp: IssueFilter;
 }) {
   const buildHref = (value: string | null) => {
     const params = new URLSearchParams();
