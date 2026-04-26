@@ -41,6 +41,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/issues" className="no-underline">
                 Issues
               </Link>
+              <Link href="/similar" className="no-underline">
+                Similar
+              </Link>
               <ThemeToggle />
             </nav>
           </div>
