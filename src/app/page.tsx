@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { sql } from "@/lib/db";
 import SyncButton from "@/components/SyncButton";
+import ClassifyAllButton from "@/components/ClassifyAllButton";
 
 export const dynamic = "force-dynamic";
 
@@ -98,7 +99,10 @@ export default async function Home() {
             AI-classified GitHub issues, stored on Neon Postgres with pgvector similarity search.
           </p>
         </div>
-        <SyncButton />
+        <div className="flex items-center gap-3">
+          <ClassifyAllButton />
+          <SyncButton />
+        </div>
       </section>
 
       <section className="grid grid-cols-2 md:grid-cols-5 gap-4" data-testid="stats-row">
