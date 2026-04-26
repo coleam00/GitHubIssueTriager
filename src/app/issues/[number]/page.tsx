@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { sql } from "@/lib/db";
 import IssueActions from "@/components/IssueActions";
+import PriorityBadge from "@/components/PriorityBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -145,7 +146,7 @@ export default async function IssueDetail({ params }: { params: Promise<{ number
           <div className="space-y-3 text-sm">
             <div className="flex items-center gap-2">
               <span className={`chip chip-${classification.category}`}>{classification.category}</span>
-              <span className={`chip chip-${classification.priority}`}>{classification.priority}</span>
+              <PriorityBadge priority={classification.priority} />
               <span className="chip">{classification.complexity}</span>
               <span className="text-accentMuted text-xs ml-auto">{classification.model}</span>
             </div>
